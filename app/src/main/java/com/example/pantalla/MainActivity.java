@@ -64,13 +64,19 @@ public class MainActivity extends AppCompatActivity {
                 // En modo descendente
                 if (maxSeconds > 0) {
                     currentSeconds = maxSeconds - secondsElapsed;
-                    
+
                     if (currentSeconds <= 0) {
                         // Incrementar periodo cuando llega a 0
                         incrementPeriod();
-                        // Reiniciar el temporizador con el valor del preset
-                        startTime = SystemClock.elapsedRealtime();
-                        currentSeconds = maxSeconds;
+                        // Mostrar que el conteo llegó a 00:00
+                        updateDisplayTime();
+                        // Agregar un pequeño retardo antes de pausar
+                        handler.postDelayed(() -> {
+                            // Pausar el cronómetro
+                            pauseTimer();
+                            // Reiniciar el botón de inicio
+                        }, 200); // Retardo de 500ms
+                        return;
                     }
                 }
             }
