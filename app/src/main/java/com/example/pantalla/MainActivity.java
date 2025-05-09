@@ -36,8 +36,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView[] periodDigits = new TextView[2];
     private long startTime;
     private long pausedTime = 0;
+    private long suspendedTime = 0;
     private long lastUpdateTime = 0;
     private static final long UPDATE_INTERVAL = 100; // 100ms para actualizaciones suaves
+    private boolean isPaused = false;
 
     private final Runnable timerRunnable = new Runnable() {
         @Override
@@ -73,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                         // Agregar un pequeño retardo antes de pausar
                         handler.postDelayed(() -> {
                             // Pausar el cronómetro
-                            pauseTimer();
+                            suspendTimer();
                             // Reiniciar el botón de inicio
                         }, 200); // Retardo de 500ms
                         return;
@@ -189,11 +191,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void suspendTimer() {
+        if (isRunning) {
+            isRunning = false;
+            timerHandler.removeCallbacks(timerRunnable);
+            suspendedTime = SystemClock.elapsedRealtime() - startTime;
+        }
+    }
+
     private void pauseTimer() {
         if (isRunning) {
             isRunning = false;
             timerHandler.removeCallbacks(timerRunnable);
-            pausedTime = SystemClock.elapsedRealtime() - startTime;
+            if (isAscending) {
+                pausedTime = SystemClock.elapsedRealtime() - startTime;
+            } else {
+                pausedTime = currentSeconds; // Guarda los segundos restantes
+            }
+            isPaused = true;
         }
     }
 
@@ -207,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
             digit.setText("0");
         }
         maxSeconds = 0;
-        pausedTime = 0;
+        suspendedTime = 0;
     }
 
     private void procesarComando(String mensaje) {
@@ -216,6 +231,13 @@ public class MainActivity extends AppCompatActivity {
 
         switch (comando) {
             case "PLAY":
+                // Actualizar currentSeconds y maxSeconds con los valores actuales del reloj
+                int playMinutes = Integer.parseInt(timeDigits[0].getText().toString()) * 10 +
+                              Integer.parseInt(timeDigits[1].getText().toString());
+                int playSeconds = Integer.parseInt(timeDigits[2].getText().toString()) * 10 +
+                              Integer.parseInt(timeDigits[3].getText().toString());
+                currentSeconds = playMinutes * 60 + playSeconds;
+                maxSeconds = currentSeconds;
                 // Iniciar el temporizador
                 isRunning = true;
                 
@@ -228,10 +250,17 @@ public class MainActivity extends AppCompatActivity {
                     currentSeconds = minutes * 60 + seconds;
                     startTime = SystemClock.elapsedRealtime() - (currentSeconds * 1000L);
                 } else {
-                    // En modo descendente, usar el tiempo del preset
-                    currentSeconds = presetSeconds;
-                    maxSeconds = presetSeconds;
-                    startTime = SystemClock.elapsedRealtime();
+                   // En modo descendente, usar el tiempo del preset
+                    if(isPaused){
+                        startTime = SystemClock.elapsedRealtime() - ((maxSeconds - currentSeconds) * 1000L);
+                        isPaused = false;  
+                    } else {
+                        if(presetSeconds > 0){
+                            currentSeconds = presetSeconds;
+                            maxSeconds = presetSeconds;
+                        }
+                        startTime = SystemClock.elapsedRealtime();
+                    }
                 }
                 
                 timerHandler.postDelayed(timerRunnable, 100);
@@ -284,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
                         presetSeconds = mins * 60 + secs;
                         
                         // Si estamos en modo descendente, actualizar el tiempo inicial
-                        if (!isAscending) {
+                        if (!isAscending && presetSeconds > 0) {
                             currentSeconds = presetSeconds;
                             maxSeconds = presetSeconds;
                             updateDisplayTime();
