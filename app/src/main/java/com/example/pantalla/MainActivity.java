@@ -13,6 +13,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -40,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
     private long lastUpdateTime = 0;
     private static final long UPDATE_INTERVAL = 100; // 100ms para actualizaciones suaves
     private boolean isPaused = false;
+    private Socket clientSocket;
+    private PrintWriter writer;
 
     private final Runnable timerRunnable = new Runnable() {
         @Override
@@ -351,6 +354,7 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "Cliente conectado desde: " + clientSocket.getInetAddress());
                         mostrarMensajeConexion("Conexión exitosa / IP: " + clientSocket.getInetAddress().getHostAddress(), true);
                         entrada = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                        writer = new PrintWriter(clientSocket.getOutputStream(), true);
                         while (!Thread.interrupted() && clientSocket.isConnected() && !clientSocket.isClosed()) {
                             String mensaje = entrada.readLine();
                             if (mensaje == null) {
@@ -456,6 +460,8 @@ public class MainActivity extends AppCompatActivity {
     @Override // androidx.appcompat.app.AppCompatActivity, androidx.fragment.app.FragmentActivity, android.app.Activity
     protected void onDestroy() {
         super.onDestroy();
+        Log.d("MiApp", "onDestroy llamado");
+        envioDatos("DESTROY");
         isRunning = false;
         timerHandler.removeCallbacks(timerRunnable);
         try {
@@ -474,4 +480,28 @@ public class MainActivity extends AppCompatActivity {
         decorView.setSystemUiVisibility(4102);
         Log.d(TAG, "Configuración cambiada. Orientación: " + (newConfig.orientation == 2 ? "Horizontal" : "Vertical"));
     }
+
+     @Override
+   protected void onStop() {
+        super.onStop();
+        envioDatos("DESTROY");
+         Log.d("MiApp", "onStop llamado");
+   }
+
+    private void envioDatos(String comando) {
+        new Thread(() -> {
+            try {
+                if (writer != null) {
+                    writer.println(comando);
+                    writer.flush();
+                    Log.d("Pantalla", "Comando enviado: " + comando);
+                }
+            } catch (Exception e) {
+                Log.e("Pantalla", "Error al enviar comando: " + e.getMessage());
+            }
+        }).start();
+    }
+
 }
+
+   
