@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 // En modo descendente
                 if (maxSeconds > 0) {
-                    currentSeconds = maxSeconds - secondsElapsed;
+                    currentSeconds = Math.max(0, maxSeconds - secondsElapsed);
 
                     if (currentSeconds <= 0) {
                         // Incrementar periodo cuando llega a 0
@@ -134,6 +134,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateDisplayTime() {
+        int safeSeconds = Math.max(0, currentSeconds); // Nunca menor a 0
         int minutes = currentSeconds / 60;
         int seconds = currentSeconds % 60;
         
